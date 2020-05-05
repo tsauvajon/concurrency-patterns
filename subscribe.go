@@ -40,19 +40,29 @@ func (s *sub) Updates() <-chan Item {
 	return s.updates
 }
 
+type fetchResult struct {
+	fetched []Item
+	next    time.Time
+	err     error
+}
+
 func (s *sub) loop() {
 	var (
 		err         error
 		pending     []Item
 		next        time.Time
 		alreadySeen = make(map[string]bool)
+		fetchDone   chan fetchResult // if chan isn't nil, Fetch is running
 	)
 	for {
 		var fetchDelay time.Duration
 		if now := time.Now(); next.After(now) {
 			fetchDelay = next.Sub(now)
 		}
-		startFetching := time.After(fetchDelay)
+		var startFetching <-chan time.Time
+		if fetchDone == nil { // not currently fetching
+			startFetching = time.After(fetchDelay)
+		}
 
 		var first Item
 		var updates chan Item
@@ -63,15 +73,21 @@ func (s *sub) loop() {
 
 		select {
 		case <-startFetching:
-			var fetched []Item
-			fetched, next, err = s.fetcher.Fetch()
+			fetchDone = make(chan fetchResult, 1)
+			go func() {
+				fetched, next, err := s.fetcher.Fetch()
+				fetchDone <- fetchResult{fetched, next, err}
+			}()
+		case r := <-fetchDone:
+			fetchDone = nil
+			err = r.err
 			if err != nil {
 				fmt.Println(err)
 				time.Sleep(10 * time.Second)
 				break
 			}
 
-			for _, item := range fetched {
+			for _, item := range r.fetched {
 				if !alreadySeen[item.GUID] {
 					pending = append(pending, item)
 					alreadySeen[item.GUID] = true
