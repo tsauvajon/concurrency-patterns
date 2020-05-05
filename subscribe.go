@@ -42,9 +42,10 @@ func (s *sub) Updates() <-chan Item {
 
 func (s *sub) loop() {
 	var (
-		err     error
-		pending []Item
-		next    time.Time
+		err         error
+		pending     []Item
+		next        time.Time
+		alreadySeen = make(map[string]bool)
 	)
 	for {
 		var fetchDelay time.Duration
@@ -64,11 +65,17 @@ func (s *sub) loop() {
 		case <-startFetching:
 			var fetched []Item
 			fetched, next, err = s.fetcher.Fetch()
-			pending = append(pending, fetched...)
-
 			if err != nil {
 				fmt.Println(err)
 				time.Sleep(10 * time.Second)
+				break
+			}
+
+			for _, item := range fetched {
+				if !alreadySeen[item.GUID] {
+					pending = append(pending, item)
+					alreadySeen[item.GUID] = true
+				}
 			}
 		case updates <- first:
 			pending = pending[1:] // remove first
