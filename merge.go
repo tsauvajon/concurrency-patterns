@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 type merge struct {
 	subs    []Subscription
 	udpates chan Item
@@ -49,6 +51,7 @@ func (m *merge) Close() error {
 	var err error
 	for range m.subs {
 		if e := <-m.errs; e != nil {
+			fmt.Println("found error", e)
 			err = e
 		}
 	}

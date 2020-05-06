@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
@@ -93,7 +94,7 @@ func (s *sub) loop() {
 		case updates <- first:
 			pending = pending[1:] // remove first
 		case errc := <-s.closing:
-			errc <- err
+			errc <- errors.New("testing returning errors")
 			close(s.updates)
 			return
 		}

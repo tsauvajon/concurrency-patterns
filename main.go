@@ -23,5 +23,5 @@ func main() {
 	}
 
 	// Show the running goroutines
-	panic("show me the stacks")
+	// panic("show me the stacks")
 }
