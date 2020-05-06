@@ -13,7 +13,7 @@ func main() {
 	)
 
 	// Close the subscription after some time
-	time.AfterFunc(5*time.Second, func() {
+	time.AfterFunc(2*time.Second, func() {
 		fmt.Println("closed:", m.Close())
 	})
 

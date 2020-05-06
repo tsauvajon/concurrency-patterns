@@ -3,47 +3,59 @@ package main
 type merge struct {
 	subs    []Subscription
 	udpates chan Item
+	closing chan struct{}
+	errs    chan error
 }
 
 func Merge(subs ...Subscription) Subscription {
 	m := merge{
 		subs:    subs,
 		udpates: make(chan Item),
+		closing: make(chan struct{}),
+		errs:    make(chan error),
 	}
+
+	for _, sub := range subs {
+		sub := sub
+		go func() {
+			uc := sub.Updates()
+			for {
+				var item Item
+				select {
+				case <-m.closing:
+					m.errs <- sub.Close()
+					return
+				case item = <-uc:
+				}
+				select {
+				case <-m.closing:
+					m.errs <- sub.Close()
+					return
+				case m.udpates <- item:
+
+				}
+			}
+		}()
+	}
+
 	return &m
 }
 
 func (m *merge) Close() error {
-	closing := make(chan error)
-	close(m.udpates)
-	for _, s := range m.subs {
-		s := s
-		go func() {
-			closing <- s.Close()
-		}()
+	for range m.subs {
+		m.closing <- struct{}{}
 	}
+	close(m.closing)
 	var err error
 	for range m.subs {
-		if e := <-closing; e != nil {
+		if e := <-m.errs; e != nil {
 			err = e
 		}
 	}
+	close(m.udpates)
 	return err
 }
 
 func (m *merge) Updates() <-chan Item {
-	go func() {
-		for _, s := range m.subs {
-			s := s
-			go func() {
-				uc := s.Updates()
-				for {
-					u := <-uc
-					m.udpates <- u
-				}
-			}()
-		}
-	}()
-
 	return m.udpates
 }
