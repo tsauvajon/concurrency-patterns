@@ -26,10 +26,6 @@ func Subscribe(f Fetcher) Subscription {
 	return &s
 }
 
-func Merge(subs ...Subscription) Subscription {
-	return nil
-}
-
 func (s *sub) Close() error {
 	errc := make(chan error)
 	s.closing <- errc
@@ -81,6 +77,7 @@ func (s *sub) loop() {
 		case r := <-fetchDone:
 			fetchDone = nil
 			err = r.err
+			next = r.next
 			if err != nil {
 				fmt.Println(err)
 				time.Sleep(10 * time.Second)

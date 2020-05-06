@@ -47,14 +47,14 @@ func Fetch(domain string) Fetcher {
 }
 
 func (r RSSFetcher) Fetch() (items []Item, next time.Time, err error) {
-	nbItems := rand.Intn(3) + 1
+	nbItems := rand.Intn(2) + 1
 
 	for i := 0; i < nbItems; i++ {
 		i := exampleItems[rand.Intn(len(exampleItems)-1)]
 		items = append(items, Item{r.domain, i.title, i.guid})
 	}
 
-	next = time.Now().Add(time.Duration(rand.Intn(3000)) * time.Millisecond)
+	next = time.Now().Add(time.Duration(rand.Intn(3000)+1000) * time.Millisecond)
 
 	return
 }
